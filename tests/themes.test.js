@@ -5,8 +5,8 @@ import {spawnSync} from 'node:child_process';
 import test from 'node:test';
 import {mount, flatten} from './harness.js';
 
-const bundled = ['herdr24-dark', 'herdr24-light', 'kanagawa-dragon', 'kanagawa-dragon-light'];
-const added = bundled.slice(1);
+const bundled = ['herdr24-dark', 'herdr24-light', 'kanagawa-dragon', 'kanagawa-dragon-light', 'carbonfox'];
+const added = ['herdr24-light', 'kanagawa-dragon', 'kanagawa-dragon-light'];
 const json = async name => JSON.parse(await readFile(`themes/${name}.json`, 'utf8'));
 const luminance = hex => {
   const [r, g, b] = hex.slice(1).match(/../g).map(value => parseInt(value, 16) / 255)
@@ -18,7 +18,7 @@ const contrast = (a, b) => (Math.max(luminance(a), luminance(b)) + 0.05)
 const runtime = theme => ({...theme, ...theme.colors,
   ...Object.fromEntries(theme.ansi.map((value, index) => [`ansi${index}`, value]))});
 
-test('both theme families ship dark and light palettes with readable primary text', async () => {
+test('bundled themes have readable primary text in their intended appearance mode', async () => {
   const files = await readdir('themes');
   for (const name of bundled) {
     assert.ok(files.includes(`${name}.json`), `Missing bundled palette: ${name}`);
@@ -33,6 +33,23 @@ test('both theme families ship dark and light palettes with readable primary tex
         `${name}: ${fill} text`);
     }
   }
+});
+
+test('Carbonfox is dark-only and retains the official Nightfox terminal export', async () => {
+  const theme = await json('carbonfox');
+  assert.equal(theme.background, '#161616');
+  assert.equal(theme.foreground, '#f2f4f8');
+  assert.equal(theme.cursor, '#f2f4f8');
+  assert.equal(theme.selection, '#2a2a2a');
+  assert.deepEqual(theme.ansi, ['#282828', '#ee5396', '#25be6a', '#08bdba', '#78a9ff', '#be95ff',
+    '#33b1ff', '#dfdfe0', '#484848', '#f16da6', '#46c880', '#2dc7c4', '#8cb6ff', '#c8a5ff', '#52bdff', '#e4e4e5']);
+  assert.ok(!(await readdir('themes')).some(name => /^carbonfox.*light/i.test(name)));
+  const readme = await readFile('README.md', 'utf8');
+  assert.match(readme, /`carbonfox`\s*\|\s*Dark only/);
+  assert.match(readme, /https:\/\/github.com\/EdenEast\/nightfox.nvim\/blob\/main\/extra\/carbonfox\/carbonfox.ghostty/);
+  const license = await readFile('licenses/nightfox.nvim-MIT.txt', 'utf8');
+  assert.match(license, /Copyright \(c\) 2021 James Simpson/);
+  assert.match(license, /Permission is hereby granted/);
 });
 
 test('Kanagawa terminal palettes retain the official Dragon and Lotus colors', async () => {
@@ -86,7 +103,7 @@ test('theme documentation identifies the Lotus-derived light counterpart and ups
 test('documented full and additive installers copy palettes safely and parse in Fish', async t => {
   const readme = await readFile('README.md', 'utf8');
   const snippets = [...readme.matchAll(/```sh\n(bash -c '[\s\S]*?')\n```/g)].map(match => match[1]);
-  assert.equal(snippets.length, 2, 'Expected full install and additive palette install');
+  assert.equal(snippets.length, 3, 'Expected full install, original palette update, and Carbonfox update');
   const root = await mkdtemp(path.resolve('.theme-install-test-'));
   try {
     for (const [index, snippet] of snippets.entries()) {
@@ -104,21 +121,44 @@ test('documented full and additive installers copy palettes safely and parse in 
       const env = {...process.env, HERDR_APP_HOME: home};
       const result = spawnSync('bash', [file], {env, encoding: 'utf8'});
       assert.equal(result.status, 0, result.stderr);
-      for (const name of index === 0 ? bundled : added) {
+      const installed = index === 0 ? bundled : snippet.includes('for theme in') ? added : ['carbonfox'];
+      for (const name of installed) {
         assert.equal(await readFile(path.join(home, 'themes', `${name}.json`), 'utf8'),
           await readFile(`themes/${name}.json`, 'utf8'));
       }
-      if (index === 1) assert.deepEqual(await readdir(home), ['themes'], 'Additive install touches themes only');
+      if (index > 0) {
+        assert.deepEqual(await readdir(home), ['themes'], 'Additive install touches themes only');
+        assert.deepEqual((await readdir(path.join(home, 'themes'))).sort(), installed.map(name => `${name}.json`).sort());
+      }
       const collision = path.join(root, `collision-${index}`);
       await mkdir(path.join(collision, 'themes'), {recursive: true});
-      const existing = path.join(collision, 'themes', 'kanagawa-dragon.json');
+      const collisionName = installed.includes('kanagawa-dragon') ? 'kanagawa-dragon.json' : 'carbonfox.json';
+      const existing = path.join(collision, 'themes', collisionName);
       await writeFile(existing, 'keep existing palette');
       const blocked = spawnSync('bash', [file], {env: {...env, HERDR_APP_HOME: collision}, encoding: 'utf8'});
       assert.notEqual(blocked.status, 0, 'Installer must refuse existing names');
       assert.equal(await readFile(existing, 'utf8'), 'keep existing palette');
       assert.deepEqual(await readdir(collision), ['themes']);
-      assert.deepEqual(await readdir(path.join(collision, 'themes')), ['kanagawa-dragon.json'],
+      assert.deepEqual(await readdir(path.join(collision, 'themes')), [collisionName],
         'Collision preflight must happen before any copy');
+      if (installed.length === 1) {
+        const previous = path.join(root, 'existing-install');
+        await mkdir(path.join(previous, 'themes'), {recursive: true});
+        await mkdir(path.join(previous, 'layouts'));
+        const layoutFile = path.join(previous, 'layouts', 'herdr24.json');
+        await writeFile(layoutFile, 'keep existing layout');
+        for (const name of bundled.filter(name => name !== 'carbonfox')) {
+          await writeFile(path.join(previous, 'themes', `${name}.json`), `keep ${name}`);
+        }
+        const update = spawnSync('bash', [file], {env: {...env, HERDR_APP_HOME: previous}, encoding: 'utf8'});
+        assert.equal(update.status, 0, update.stderr);
+        assert.equal(await readFile(layoutFile, 'utf8'), 'keep existing layout');
+        for (const name of bundled.filter(name => name !== 'carbonfox')) {
+          assert.equal(await readFile(path.join(previous, 'themes', `${name}.json`), 'utf8'), `keep ${name}`);
+        }
+        assert.equal(await readFile(path.join(previous, 'themes', 'carbonfox.json'), 'utf8'),
+          await readFile('themes/carbonfox.json', 'utf8'));
+      }
     }
   } finally { await rm(root, {recursive: true, force: true}); }
 });

@@ -1,13 +1,13 @@
 # herdr24
 
-Build a native terminal/TUI-style Herdr workspace, not a web page: square panels, thin borders, and Geist Mono. Keep layout structure independent of four dark/light grayscale-violet and Kanagawa palettes. There is no runtime preview yet; add one only after real desktop validation.
+Build a native terminal/TUI-style Herdr workspace, not a web page: square panels, thin borders, and Geist Mono. Keep layout structure independent of five palettes: dark/light grayscale-violet and Kanagawa, plus dark-only Carbonfox. There is no runtime preview yet; add one only after real desktop validation.
 
 ## What you see
 
 - A 250px left sidebar (44–480px, rail below 160px). Brand/search/collapse at the top (42px); resizable spaces/agents lists in the middle; settings/themes and Add machine at the bottom (70px).
 - A 42px tab/window-control strip over the workspace, followed by active-tab terminals. Workspace padding and pane gaps are 10px; pane borders are 1px with 0px radius. The 30px pane header is always visible, including lone panes.
 - An optional 368px right panel (280–900px) containing shipped Files and Changes, and a 28px status line below the workspace.
-- The default dark palette keeps terminal `#141414`, chrome/canvas `#1d1d1d`, text `#aeaeae`, and violet accent `#b589d6`. Alternatives are `herdr24-light`, `kanagawa-dragon`, and `kanagawa-dragon-light` (Lotus-derived). Use all runtime colors through semantic theme tokens, never fixed mod colors.
+- The default dark palette keeps terminal `#141414`, chrome/canvas `#1d1d1d`, text `#aeaeae`, and violet accent `#b589d6`. Alternatives are `herdr24-light`, `kanagawa-dragon`, `kanagawa-dragon-light` (Lotus-derived), and `carbonfox` (dark only). Use all runtime colors through semantic theme tokens, never fixed mod colors.
 
 ## How it behaves
 
@@ -21,7 +21,9 @@ Pane headers focus their own pane and target it explicitly for split, zoom, and 
 
 Themes are independent JSON files. The layout defaults to `herdr24-dark`; native Look settings allow selecting another palette, remembered per layout. Create palettes by copying/editing the JSON, not by changing mods or layout overrides.
 
-Keep `herdr24-dark` unchanged. The light variant uses off-white/charcoal with a darker violet accent. Kanagawa Dragon and its Lotus-derived light counterpart preserve the official terminal background/foreground and first 16 ANSI entries; Herdr semantic UI assignments use the matching palette. Do not describe Lotus as an upstream Dragon Light theme. Include `licenses/kanagawa.nvim-MIT.txt` when distributing the adapted Kanagawa palettes. Install all four palettes for a new setup, or only the three new palettes for an existing installation, with collision checks before copying.
+Keep existing palettes unchanged. The herdr24 light variant uses off-white/charcoal with a darker violet accent. Kanagawa Dragon and its Lotus-derived light counterpart preserve the official terminal background/foreground and first 16 ANSI entries; Herdr semantic UI assignments use the matching palette. Do not describe Lotus as an upstream Dragon Light theme. Include `licenses/kanagawa.nvim-MIT.txt` when distributing the adapted Kanagawa palettes.
+
+Carbonfox preserves the official EdenEast/nightfox.nvim terminal export: `#161616` background, `#f2f4f8` foreground/cursor, `#2a2a2a` selection, and all 16 ANSI colors (including the teal yellow slot). Its neutral UI surfaces and semantic token assignments are adapted to Herdr, with blue accents. Supply dark mode only and include `licenses/nightfox.nvim-MIT.txt`. Install all five palettes for a new setup; keep separate collision-checked update commands for the original three additions and for Carbonfox alone.
 
 ## Built from
 
@@ -49,4 +51,12 @@ This is a presentation layer over native data, not a copy of all shipped sidebar
 3. A live window confirms long/empty states, resizing, contextual actions, pane controls, per-space panels, native launch/settings flows, and platform window controls.
 4. Choosing another theme changes every custom region and terminal without changing the layout.
 5. The previous layout can be restored without changing keys, shared user state, or running terminals.
-6. All four palettes pass schema and primary-text contrast tests; actual palettes render through every mocked region. Full/additive installer snippets parse in Bash/Fish and refuse existing names without partial copying. Live visual proof is still required.
+6. All five palettes pass schema and primary-text contrast tests; actual palettes render through every mocked region. Full/additive installer snippets parse in Bash/Fish and refuse existing names without partial copying. Carbonfox has no light variant. Live visual proof is still required.
+
+## Installer and updater
+
+`install.sh` is a POSIX bootstrap for GitHub Releases, not the native Herdr installer at releases.herdr.dev. It resolves a single release tag, downloads a Linux/macOS amd64/arm64 installer, checks its SHA256, and forwards arguments. The release URL is not available until a tagged release is published.
+
+The Go binary embeds only the 24 runtime files. Bubble Tea/Lip Gloss shows a confirmation plan and transaction progress; `--yes` provides plain noninteractive execution and `--dry-run` writes nothing. Hash comparisons detect manual installations and unchanged files. Existing replacements are backed up under `.herdr24/backups/`; a final manifest records installed hashes/version. A lock, path/symlink checks, atomic writes and rollback protect updates. Preserve user-created files; do not automatically activate a theme/layout or remove obsolete assets.
+
+Run Go tests (including direct model transitions and fake-network bootstrap fixtures), Node tests, and shell syntax checks. `scripts/build-release.sh` builds the four platform assets and checksums; the tag-triggered release workflow publishes them. Live Herdr rendering and remote release execution remain separate acceptance checks.

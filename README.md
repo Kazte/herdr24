@@ -6,6 +6,60 @@ A native terminal-style layout for Herdr: square borders, compact monospace labe
 
 > Implementation and mocked checks are complete. Native loading and visual verification are **not yet confirmed**: this environment denies GPUI access to the Wayland compositor. Your active Herdr configuration has not been changed.
 
+## Install or update
+
+The same command installs missing files and updates changed bundled files:
+
+```sh
+curl -fsSL https://github.com/Kazte/herdr24/releases/latest/download/install.sh | sh
+```
+
+**Publication pending:** this URL becomes usable only after the first `v*` tag is pushed and the release workflow publishes its assets. Until then, use the local installer or manual steps below. The installer targets Linux/macOS on amd64/arm64; it needs no Go, Node, or sudo once released.
+
+The Go/Bubble Tea interface shows the destination and new/update/unchanged counts before confirmation. Re-running it compares file hashes, not just version numbers. Unchanged files are not rewritten. Replaced bundled files—including local customizations—are backed up before writing; custom themes, settings, keys, old `system24` assets, and other user files are untouched. No obsolete files are deleted.
+
+| Option | Behavior |
+| --- | --- |
+| `--dry-run` | Show changes without writing anything |
+| `--yes` | Apply with backups without a prompt; suitable for headless use |
+| `--dir PATH` | Override the Herdr home directory |
+| `--no-tui` | Plain output; requires `--yes` to apply |
+| `--version` | Print the installer release version |
+
+```sh
+curl -fsSL https://github.com/Kazte/herdr24/releases/latest/download/install.sh | sh -s -- --dry-run
+curl -fsSL https://github.com/Kazte/herdr24/releases/latest/download/install.sh | sh -s -- --yes
+```
+
+To pin a release or use a custom home, set variables on **`sh`**, not only on `curl`. This also works from Fish:
+
+```sh
+curl -fsSL https://github.com/Kazte/herdr24/releases/latest/download/install.sh | env HERDR24_VERSION=v0.1.0 HERDR_APP_HOME=/path/to/herdr-home sh
+```
+
+The bootstrap resolves one release tag and verifies the executable against its SHA256SUMS before running it. Checksums protect consistency, not authenticity independent of the trusted GitHub release. Review `install.sh` before piping it to a shell if preferred. An interactive piped install uses the controlling terminal; without a terminal, use `--yes` or `--dry-run`.
+
+Installer state lives in `<Herdr home>/.herdr24/manifest.json`; backups live under `.herdr24/backups/run-*/` with original paths and permissions. A lock prevents concurrent updates; never remove `install.lock` while an installer is running. Changed files are written atomically; ordinary write failures roll back files already applied. An interrupted process may leave a lock/backups for inspection. Symlink targets/parents inside the Herdr home are refused rather than followed.
+
+After installation, activate manually; the installer never changes your active layout or theme:
+
+```sh
+herdr-app do layout.switch '{"name":"herdr24"}'
+```
+
+### Local installer and releases
+
+Go 1.25+ is needed only to build from source. The pinned Bubble Tea v1/Lip Gloss stack avoids mixing v1 and v2 APIs.
+
+```sh
+go run ./cmd/herdr24-installer --dry-run
+go run ./cmd/herdr24-installer
+```
+
+`go test ./...` covers the updater, TUI state transitions, and offline bootstrap fixtures. Run `go test -race ./...` and `npm test` before release. `sh scripts/build-release.sh v0.1.0 dist` cross-builds four standalone installers, generates checksums, and copies the bootstrap and third-party notices. It does not publish. Push a `v*` tag only when ready: `.github/workflows/release.yml` tests and publishes those exact artifacts to that tag's GitHub Release. No release is created by installing locally.
+
+For installer rollback, select your previous layout first, restore the specific originals from the reported backup directory, and remove only files newly introduced by that run if needed. Do not delete unrelated files or blindly restore all state. Keep the backup until the native UI has been checked. The manual removal boundary is listed below.
+
 ## Check first
 
 Requires Herdr with the layout/mod APIs documented in its generated `AGENTS.md`, and Node.js 22.15+ for development checks. No npm dependencies or install step are required.
@@ -26,7 +80,7 @@ bash -c '
   set -eu
   dest="${HERDR_APP_HOME:-$HOME/.config/herdr-app}"
   for item in layouts/herdr24.json themes/herdr24-dark.json themes/herdr24-light.json \
-    themes/kanagawa-dragon.json themes/kanagawa-dragon-light.json mods/herdr24 \
+    themes/kanagawa-dragon.json themes/kanagawa-dragon-light.json themes/carbonfox.json mods/herdr24 \
     mods/herdr24-spaces mods/herdr24-agents mods/herdr24-tabs \
     mods/herdr24-pane mods/herdr24-status; do
     if [ -e "$dest/$item" ]; then
@@ -37,7 +91,7 @@ bash -c '
   mkdir -p "$dest/layouts" "$dest/themes" "$dest/mods"
   cp layouts/herdr24.json "$dest/layouts/"
   cp themes/herdr24-dark.json themes/herdr24-light.json \
-    themes/kanagawa-dragon.json themes/kanagawa-dragon-light.json "$dest/themes/"
+    themes/kanagawa-dragon.json themes/kanagawa-dragon-light.json themes/carbonfox.json "$dest/themes/"
   for mod in mods/herdr24 mods/herdr24-*; do
     mkdir -p "$dest/$mod"
     cp "$mod/main.js" "$mod/mod.json" "$mod/ui.js" "$dest/$mod/"
@@ -73,10 +127,30 @@ Agent state has text as well as palette-specific color: `[working]` uses a nativ
 | `herdr24-light` | Light | Off-white/charcoal with darker violet accents |
 | `kanagawa-dragon` | Dark | Kanagawa Dragon charcoal/earth tones |
 | `kanagawa-dragon-light` | Light | Lotus-derived cream/ink counterpart |
+| `carbonfox` | Dark only | Carbon gray with blue, violet, pink, and teal accents |
 
 Kanagawa Dragon is a dark palette. Its light counterpart here uses Kanagawa's official **Lotus** colors; it is not an upstream theme named Dragon Light. Both preserve the upstream terminal background, foreground, and first 16 ANSI colors, with semantic UI assignments adapted to Herdr.
 
-Already installed herdr24? Add only the three new palettes, without touching your layout, mods, or existing default palette:
+Carbonfox uses the official Nightfox terminal palette, with semantic UI surfaces adapted to Herdr. It is available in dark mode only; there is no Carbonfox light variant.
+
+To add only Carbonfox to an existing installation:
+
+```sh
+bash -c '
+  set -eu
+  dest="${HERDR_APP_HOME:-$HOME/.config/herdr-app}"
+  if [ -e "$dest/themes/carbonfox.json" ]; then
+    printf "Not installed: name already exists: %s\n" "$dest/themes/carbonfox.json" >&2
+    exit 1
+  fi
+  mkdir -p "$dest/themes"
+  cp themes/carbonfox.json "$dest/themes/"
+'
+```
+
+Activate it with `herdr-app do app.theme '{"name":"carbonfox"}'` or choose **carbonfox** in Look settings.
+
+To add the original light/Kanagawa additions, copy only these three palettes without touching your layout, mods, or existing default palette:
 
 ```sh
 bash -c '
@@ -123,13 +197,13 @@ Herdr discovers themes by filename and remembers selection per layout. No JavaSc
 
 Use `#rrggbb` strings. Keep the complete semantic token set from the template, including paired `accent`/`accent_foreground` and `solid`/`solid_foreground` values. Test legibility on both normal and selected surfaces. Herdr can derive UI colors when `colors` is omitted, but this package validates complete palettes for predictable results. Do not add fixed `colors` overrides to the layout or hex values to mods: that would prevent theme changes from reaching the whole custom interface.
 
-Avoid naming a theme exactly like another layout: Herdr limits those themes to that layout's picker. Light/dark classification is determined by Herdr; no custom `light` property is required. This package supplies four palettes, not a visual theme editor.
+Avoid naming a theme exactly like another layout: Herdr limits those themes to that layout's picker. Light/dark classification is determined by Herdr; no custom `light` property is required. This package supplies five palettes, not a visual theme editor.
 
 ## Development and verification
 
 `shared/ui.js` is the helper source. After changing it, run `npm run build:mods` to refresh each mod's local `ui.js`. These copies keep every deployed mod self-contained; tests fail if they drift. Build **before** tests/native checks, and check the exact final files.
 
-Tests use a restricted mock of Herdr/GPUI: they validate layout references, palette contracts, primary-text contrast, empty states, actions, pane targeting, per-space panel restoration, grouping/pinning, live descendant discovery and peek/focus routing, cyclic/duplicate ancestry, platform controls, and all four actual palettes. Installer tests use temporary destinations and check collision safety and Bash syntax (also Fish when installed). These checks do not replace the native renderer or guarantee contrast for every ANSI/secondary color.
+Tests use a restricted mock of Herdr/GPUI: they validate layout references, palette contracts, primary-text contrast, empty states, actions, pane targeting, per-space panel restoration, grouping/pinning, live descendant discovery and peek/focus routing, cyclic/duplicate ancestry, platform controls, and all five actual palettes. Installer tests use temporary destinations and check collision safety and Bash syntax (also Fish when installed). These checks do not replace the native renderer or guarantee contrast for every ANSI/secondary color.
 
 Native verification is pending here: a check before the rename exited 101 before loading the mod, because compositor connection was denied. Other checks share that unavailable startup prerequisite. There is no runtime screenshot or claimed preview yet.
 
@@ -153,14 +227,16 @@ Switch back to your recorded layout (`main` is Herdr's shipped default):
 herdr-app do layout.switch '{"name":"main"}'
 ```
 
-Then remove **only** `layouts/herdr24.json`, the four bundled palette files (`herdr24-dark.json`, `herdr24-light.json`, `kanagawa-dragon.json`, `kanagawa-dragon-light.json`), and the six installed `herdr24*` mod folders listed above. For a palette-only rollback, select your previous theme and remove only the new palette files you installed. Keep any palettes you created. Do not delete shared state, your keys, or other layouts. If the UI becomes unusable, Herdr's unbindable `ctrl-alt-shift-escape` returns to its default layout, but also sets aside the current keybindings; use normal switching when possible.
+Then remove **only** `layouts/herdr24.json`, the five bundled palette files (`herdr24-dark.json`, `herdr24-light.json`, `kanagawa-dragon.json`, `kanagawa-dragon-light.json`, `carbonfox.json`), and the six installed `herdr24*` mod folders listed above. For a palette-only rollback, select your previous theme and remove only the new palette files you installed. Keep any palettes you created. Do not delete shared state, your keys, or other layouts. If the UI becomes unusable, Herdr's unbindable `ctrl-alt-shift-escape` returns to its default layout, but also sets aside the current keybindings; use normal switching when possible.
 
-The rollback boundary is this package's named layout, four bundled palettes, and six mods; no core model or terminal data is migrated.
+The rollback boundary is this package's named layout, five bundled palettes, and six mods; no core model or terminal data is migrated.
 
 ## Credits
 
 Visual inspiration and palette: [refact0r/system24](https://github.com/refact0r/system24), an MIT-licensed Discord theme. Its [original OKLCH palette](https://github.com/refact0r/system24/blob/main/theme/system24.theme.css) is adapted to Herdr's hexadecimal sRGB format. Native mods are independently implemented against Herdr's generated API documentation; no Discord CSS or shipped Herdr mod implementation is included.
 
 Kanagawa Dragon and the Lotus-derived light counterpart adapt [rebelot/kanagawa.nvim](https://github.com/rebelot/kanagawa.nvim): [palette](https://github.com/rebelot/kanagawa.nvim/blob/master/lua/kanagawa/colors.lua) and [theme mappings](https://github.com/rebelot/kanagawa.nvim/blob/master/lua/kanagawa/themes.lua). Copyright (c) 2021 Tommaso Laurenzi; [upstream MIT license](licenses/kanagawa.nvim-MIT.txt) included. `herdr24-light` is this package's light adaptation of the grayscale/violet identity, not a claimed upstream System24 preset.
+
+Carbonfox adapts [EdenEast/nightfox.nvim](https://github.com/EdenEast/nightfox.nvim): [source palette](https://github.com/EdenEast/nightfox.nvim/blob/main/lua/nightfox/palette/carbonfox.lua) and [official terminal export](https://github.com/EdenEast/nightfox.nvim/blob/main/extra/carbonfox/carbonfox.ghostty). Terminal colors are preserved, including the intentional teal ANSI yellow slot; Herdr UI token assignments are an adaptation. Copyright (c) 2021 James Simpson; [upstream MIT license](licenses/nightfox.nvim-MIT.txt) included.
 
 See [RECIPE.md](RECIPE.md) for the rebuild brief.
