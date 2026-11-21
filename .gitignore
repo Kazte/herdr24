@@ -1,0 +1,5 @@
+node_modules/
+*.error
+preview.png
+mods/*/jsconfig.json
+mods/*/*.d.ts

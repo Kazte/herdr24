@@ -1,0 +1,15 @@
+{
+  "name": "herdr24",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A native terminal-style Herdr layout with interchangeable themes",
+  "scripts": {
+    "test": "node --experimental-vm-modules --test --test-isolation=none tests/*.test.js",
+    "check:mods": "node scripts/check-mods.js",
+    "build:mods": "node scripts/build-mods.js"
+  },
+  "engines": {
+    "node": ">=22.15"
+  }
+}
