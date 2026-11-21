@@ -5,7 +5,7 @@
   "type": "module",
   "description": "A native terminal-style Herdr layout with interchangeable themes",
   "scripts": {
-    "test": "node --experimental-vm-modules --test --test-isolation=none tests/*.test.js",
+    "test": "node --experimental-vm-modules --test tests/*.test.js",
     "check:mods": "node scripts/check-mods.js",
     "build:mods": "node scripts/build-mods.js"
   },
