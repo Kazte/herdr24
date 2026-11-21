@@ -1,13 +1,13 @@
 # herdr24
 
-Build a native terminal/TUI-style Herdr workspace, not a web page: square dark-gray panels, thin borders, Geist Mono, and restrained violet highlights. Keep layout structure independent of the selected palette. There is no runtime preview yet; add one only after real desktop validation.
+Build a native terminal/TUI-style Herdr workspace, not a web page: square panels, thin borders, and Geist Mono. Keep layout structure independent of four dark/light grayscale-violet and Kanagawa palettes. There is no runtime preview yet; add one only after real desktop validation.
 
 ## What you see
 
 - A 250px left sidebar (44–480px, rail below 160px). Brand/search/collapse at the top (42px); resizable spaces/agents lists in the middle; settings/themes and Add machine at the bottom (70px).
 - A 42px tab/window-control strip over the workspace, followed by active-tab terminals. Workspace padding and pane gaps are 10px; pane borders are 1px with 0px radius. The 30px pane header is always visible, including lone panes.
 - An optional 368px right panel (280–900px) containing shipped Files and Changes, and a 28px status line below the workspace.
-- Dark terminal `#141414`, chrome/canvas `#1d1d1d`, normal terminal text `#aeaeae`, violet accent `#b589d6`. Use all runtime colors through semantic theme tokens, never fixed mod colors.
+- The default dark palette keeps terminal `#141414`, chrome/canvas `#1d1d1d`, text `#aeaeae`, and violet accent `#b589d6`. Alternatives are `herdr24-light`, `kanagawa-dragon`, and `kanagawa-dragon-light` (Lotus-derived). Use all runtime colors through semantic theme tokens, never fixed mod colors.
 
 ## How it behaves
 
@@ -20,6 +20,8 @@ Tabs select, rename on double-click, reorder by press/release, close, and expose
 Pane headers focus their own pane and target it explicitly for split, zoom, and close. Global shortcuts remain untouched. Linux/Windows get minimize/maximize/close controls; macOS retains native traffic lights and reserves space when the sidebar is hidden or narrowed.
 
 Themes are independent JSON files. The layout defaults to `herdr24-dark`; native Look settings allow selecting another palette, remembered per layout. Create palettes by copying/editing the JSON, not by changing mods or layout overrides.
+
+Keep `herdr24-dark` unchanged. The light variant uses off-white/charcoal with a darker violet accent. Kanagawa Dragon and its Lotus-derived light counterpart preserve the official terminal background/foreground and first 16 ANSI entries; Herdr semantic UI assignments use the matching palette. Do not describe Lotus as an upstream Dragon Light theme. Include `licenses/kanagawa.nvim-MIT.txt` when distributing the adapted Kanagawa palettes. Install all four palettes for a new setup, or only the three new palettes for an existing installation, with collision checks before copying.
 
 ## Built from
 
@@ -47,3 +49,4 @@ This is a presentation layer over native data, not a copy of all shipped sidebar
 3. A live window confirms long/empty states, resizing, contextual actions, pane controls, per-space panels, native launch/settings flows, and platform window controls.
 4. Choosing another theme changes every custom region and terminal without changing the layout.
 5. The previous layout can be restored without changing keys, shared user state, or running terminals.
+6. All four palettes pass schema and primary-text contrast tests; actual palettes render through every mocked region. Full/additive installer snippets parse in Bash/Fish and refuse existing names without partial copying. Live visual proof is still required.

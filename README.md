@@ -2,7 +2,7 @@
 
 Inspired by [system24](https://github.com/refact0r/system24) by [refact0r](https://github.com/refact0r).
 
-A native terminal-style layout for Herdr: monochrome panels, square borders, compact monospace labels, and the original System24 gray/violet palette. Layout and colors are independent: create new JSON themes and select them through Herdr's existing Look settings.
+A native terminal-style layout for Herdr: square borders, compact monospace labels, and grayscale/violet or Kanagawa palettes in dark and light variants. Layout and colors are independent: select themes through Herdr's existing Look settings.
 
 > Implementation and mocked checks are complete. Native loading and visual verification are **not yet confirmed**: this environment denies GPUI access to the Wayland compositor. Your active Herdr configuration has not been changed.
 
@@ -25,7 +25,8 @@ Run this **from this folder**, only after checking the package. The command expl
 bash -c '
   set -eu
   dest="${HERDR_APP_HOME:-$HOME/.config/herdr-app}"
-  for item in layouts/herdr24.json themes/herdr24-dark.json mods/herdr24 \
+  for item in layouts/herdr24.json themes/herdr24-dark.json themes/herdr24-light.json \
+    themes/kanagawa-dragon.json themes/kanagawa-dragon-light.json mods/herdr24 \
     mods/herdr24-spaces mods/herdr24-agents mods/herdr24-tabs \
     mods/herdr24-pane mods/herdr24-status; do
     if [ -e "$dest/$item" ]; then
@@ -35,7 +36,8 @@ bash -c '
   done
   mkdir -p "$dest/layouts" "$dest/themes" "$dest/mods"
   cp layouts/herdr24.json "$dest/layouts/"
-  cp themes/herdr24-dark.json "$dest/themes/"
+  cp themes/herdr24-dark.json themes/herdr24-light.json \
+    themes/kanagawa-dragon.json themes/kanagawa-dragon-light.json "$dest/themes/"
   for mod in mods/herdr24 mods/herdr24-*; do
     mkdir -p "$dest/$mod"
     cp "$mod/main.js" "$mod/mod.json" "$mod/ui.js" "$dest/$mod/"
@@ -61,9 +63,46 @@ All six mod folders are required. The included mods make no network requests, ru
 - **Bottom:** machine, branch, agent count, blocked count, and command-palette access.
 - **Footer:** settings/themes and Add machine. Existing global keybindings remain unchanged.
 
-Agent state has text as well as color: `[working]` uses a native animated ASCII spinner, `[blocked]` is rose, `[done]` mint, and `[idle]` gray. The working spinner's tooltip identifies its state. Pinned agents stay first. Live descendants without panes are marked `->` and inherit their parent's space for grouping. Click one to open Herdr's native terminal peek, including its keep-as-tab control; descendants already listed as agents appear only once and focus normally. Addresses retain their machine prefix. Finished unkept children show idle, because they report completion to their parent; errors show blocked. Files, Changes, dialogs, picker, terminal menus, and toasts remain shipped Herdr components; their geometry is not redesigned by this package.
+Agent state has text as well as palette-specific color: `[working]` uses a native animated ASCII spinner; blocked, done, and idle retain text labels. The working spinner's tooltip identifies its state. Pinned agents stay first. Live descendants without panes are marked `->` and inherit their parent's space for grouping. Click one to open Herdr's native terminal peek, including its keep-as-tab control; descendants already listed as agents appear only once and focus normally. Addresses retain their machine prefix. Finished unkept children show idle, because they report completion to their parent; errors show blocked. Files, Changes, dialogs, picker, terminal menus, and toasts remain shipped Herdr components; their geometry is not redesigned by this package.
 
 ## Add and select themes
+
+| Theme ID | Mode | Palette |
+| --- | --- | --- |
+| `herdr24-dark` | Dark (default) | Original System24 gray/violet adaptation |
+| `herdr24-light` | Light | Off-white/charcoal with darker violet accents |
+| `kanagawa-dragon` | Dark | Kanagawa Dragon charcoal/earth tones |
+| `kanagawa-dragon-light` | Light | Lotus-derived cream/ink counterpart |
+
+Kanagawa Dragon is a dark palette. Its light counterpart here uses Kanagawa's official **Lotus** colors; it is not an upstream theme named Dragon Light. Both preserve the upstream terminal background, foreground, and first 16 ANSI colors, with semantic UI assignments adapted to Herdr.
+
+Already installed herdr24? Add only the three new palettes, without touching your layout, mods, or existing default palette:
+
+```sh
+bash -c '
+  set -eu
+  dest="${HERDR_APP_HOME:-$HOME/.config/herdr-app}"
+  for theme in herdr24-light kanagawa-dragon kanagawa-dragon-light; do
+    if [ -e "$dest/themes/$theme.json" ]; then
+      printf "Not installed: name already exists: %s\n" "$dest/themes/$theme.json" >&2
+      exit 1
+    fi
+  done
+  mkdir -p "$dest/themes"
+  cp themes/herdr24-light.json themes/kanagawa-dragon.json \
+    themes/kanagawa-dragon-light.json "$dest/themes/"
+'
+```
+
+Choose a palette in **[ settings ] → Look**, or select one directly:
+
+```sh
+herdr-app do app.theme '{"name":"kanagawa-dragon"}'
+```
+
+Replace the name with any ID in the table. Select light/dark choices in Look settings; the package does not automatically pair theme families or change your appearance preference.
+
+To create your own palette:
 
 1. Copy `themes/herdr24-dark.json` to `themes/my-palette.json` in this package and edit its values.
 2. Run `npm test`; it validates every JSON theme shipped in `themes/`.
@@ -84,13 +123,13 @@ Herdr discovers themes by filename and remembers selection per layout. No JavaSc
 
 Use `#rrggbb` strings. Keep the complete semantic token set from the template, including paired `accent`/`accent_foreground` and `solid`/`solid_foreground` values. Test legibility on both normal and selected surfaces. Herdr can derive UI colors when `colors` is omitted, but this package validates complete palettes for predictable results. Do not add fixed `colors` overrides to the layout or hex values to mods: that would prevent theme changes from reaching the whole custom interface.
 
-Avoid naming a theme exactly like another layout: Herdr limits those themes to that layout's picker. Light/dark classification is determined by Herdr; no custom `light` property is required. This package supplies one dark palette, not a visual theme editor.
+Avoid naming a theme exactly like another layout: Herdr limits those themes to that layout's picker. Light/dark classification is determined by Herdr; no custom `light` property is required. This package supplies four palettes, not a visual theme editor.
 
 ## Development and verification
 
 `shared/ui.js` is the helper source. After changing it, run `npm run build:mods` to refresh each mod's local `ui.js`. These copies keep every deployed mod self-contained; tests fail if they drift. Build **before** tests/native checks, and check the exact final files.
 
-Tests use a restricted mock of Herdr/GPUI: they validate layout references, palette contracts, empty states, actions, pane targeting, per-space panel restoration, grouping/pinning, live descendant discovery and peek/focus routing, cyclic/duplicate ancestry, platform controls, and palette changes. They do not replace the native renderer.
+Tests use a restricted mock of Herdr/GPUI: they validate layout references, palette contracts, primary-text contrast, empty states, actions, pane targeting, per-space panel restoration, grouping/pinning, live descendant discovery and peek/focus routing, cyclic/duplicate ancestry, platform controls, and all four actual palettes. Installer tests use temporary destinations and check collision safety and Bash syntax (also Fish when installed). These checks do not replace the native renderer or guarantee contrast for every ANSI/secondary color.
 
 Native verification is pending here: a check before the rename exited 101 before loading the mod, because compositor connection was denied. Other checks share that unavailable startup prerequisite. There is no runtime screenshot or claimed preview yet.
 
@@ -114,12 +153,14 @@ Switch back to your recorded layout (`main` is Herdr's shipped default):
 herdr-app do layout.switch '{"name":"main"}'
 ```
 
-Then remove **only** `layouts/herdr24.json`, `themes/herdr24-dark.json`, and the six installed `herdr24*` folders listed above. Keep any palettes you created. Do not delete shared state, your keys, or other layouts. If the UI becomes unusable, Herdr's unbindable `ctrl-alt-shift-escape` returns to its default layout, but also sets aside the current keybindings; use normal switching when possible.
+Then remove **only** `layouts/herdr24.json`, the four bundled palette files (`herdr24-dark.json`, `herdr24-light.json`, `kanagawa-dragon.json`, `kanagawa-dragon-light.json`), and the six installed `herdr24*` mod folders listed above. For a palette-only rollback, select your previous theme and remove only the new palette files you installed. Keep any palettes you created. Do not delete shared state, your keys, or other layouts. If the UI becomes unusable, Herdr's unbindable `ctrl-alt-shift-escape` returns to its default layout, but also sets aside the current keybindings; use normal switching when possible.
 
-The rollback boundary is this package's named layout, default palette, and six mods; no core model or terminal data is migrated.
+The rollback boundary is this package's named layout, four bundled palettes, and six mods; no core model or terminal data is migrated.
 
 ## Credits
 
 Visual inspiration and palette: [refact0r/system24](https://github.com/refact0r/system24), an MIT-licensed Discord theme. Its [original OKLCH palette](https://github.com/refact0r/system24/blob/main/theme/system24.theme.css) is adapted to Herdr's hexadecimal sRGB format. Native mods are independently implemented against Herdr's generated API documentation; no Discord CSS or shipped Herdr mod implementation is included.
+
+Kanagawa Dragon and the Lotus-derived light counterpart adapt [rebelot/kanagawa.nvim](https://github.com/rebelot/kanagawa.nvim): [palette](https://github.com/rebelot/kanagawa.nvim/blob/master/lua/kanagawa/colors.lua) and [theme mappings](https://github.com/rebelot/kanagawa.nvim/blob/master/lua/kanagawa/themes.lua). Copyright (c) 2021 Tommaso Laurenzi; [upstream MIT license](licenses/kanagawa.nvim-MIT.txt) included. `herdr24-light` is this package's light adaptation of the grayscale/violet identity, not a claimed upstream System24 preset.
 
 See [RECIPE.md](RECIPE.md) for the rebuild brief.
